@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Partner Gyms - Habit Health</title>
+    <meta name="description" content="Discover partner gyms near you with Habit Health by HCL Healthcare">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="/static/assets/habit_logo.png" alt="Habit Health" />
+                    <div class="logo-text">
+                        <span class="logo-title">by HCL Healthcare</span>
+                    </div>
+                </div>
+                <h1 class="page-title">Find Partner Gyms</h1>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h2 class="hero-title">Transform Your Fitness Journey</h2>
+            <p class="hero-subtitle">Join thousands of members across India's premium fitness partners</p>
+        </div>
+    </section>
+
+    <!-- Brand Filter Section -->
+    <section class="brands-section">
+        <div class="container">
+            <h3 class="section-title">Filter by Partner</h3>
+            <div class="brands-grid" id="brandsGrid">
+                <!-- Brand filter chips will be dynamically loaded -->
+                <div class="loading">Loading partners...</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Location Section -->
+    <section class="gyms-section">
+        <div class="container">
+            <div class="location-section" id="locationSection">
+                <div class="location-content">
+                    <div class="location-info">
+                        <div class="location-icon">📍</div>
+                        <div class="location-text">
+                            <h3 id="locationCity">Delhi</h3>
+                            <p>Showing gyms near you</p>
+                        </div>
+                    </div>
+                    <button class="btn" id="nearbyBtn">Show Nearby Gyms</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gyms Section -->
+    <section class="gyms-section" id="gymsSection">
+        <div class="container">
+            <h3 class="section-title" id="gymsTitle">Gyms Near You</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 24px;" id="gymsCount"></p>
+            <div class="gym-grid" id="gymsGrid">
+                <!-- Gym cards will be dynamically loaded -->
+                <div class="loading">Loading gyms...</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gym Details Modal -->
+    <div class="modal-overlay hidden" id="gymModal" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div id="modalBody">
+                <!-- Modal content dynamically loaded -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="toast" id="successToast">
+        <div class="toast-content">
+            <span class="toast-icon">✓</span>
+            <span class="toast-message" id="toastMessage"></span>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Habit Health by HCL Healthcare. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // ============================================================================
+        // CONSTANTS
+        // ============================================================================
+        const API_BASE = '';
+        const DEFAULT_LOCATION = {
+            city: 'Delhi',
+            lat: 28.6139,
+            lon: 77.2090
+        };
+
+        // ============================================================================
+        // STATE MANAGEMENT
+        // ============================================================================
+        const state = {
+            allGyms: [],
+            filteredGyms: [],
+            activeFilters: [],
+            userLocation: null,
+            selectedPlan: null
+        };
+
+        // ============================================================================
+        // API FUNCTIONS
+        // ============================================================================
+        async function fetchPartners() {
+            try {
+                const response = await fetch(`${API_BASE}/api/partners`);
+                const data = await response.json();
+                return data.partners;
+            } catch (error) {
+                console.error('Error fetching partners:', error);
+                return [];
+            }
+        }
+
+        async function fetchAllGyms() {
+            try {
+                const response = await fetch(`${API_BASE}/api/gyms`);
+                const data = await response.json();
+                return data.gyms;
+            } catch (error) {
+                console.error('Error fetching gyms:', error);
+                return [];
+            }
+        }
+
+        async function fetchNearbyGyms(lat, lon, limit = 20) {
+            try {
+                const url = `${API_BASE}/api/gyms/nearby?lat=${lat}&lon=${lon}&limit=${limit}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                return data.gyms;
+            } catch (error) {
+                console.error('Error fetching nearby gyms:', error);
+                return [];
+            }
+        }
+
+        async function fetchGymDetails(gymId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/gyms/${gymId}`);
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching gym details:', error);
+                return null;
+            }
+        }
+
+        async function submitSubscription(formData) {
+            try {
+                const response = await fetch(`${API_BASE}/api/subscription/request`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Error submitting subscription:', error);
+                throw error;
+            }
+        }
+
+        // ============================================================================
+        // GEOLOCATION
+        // ============================================================================
+        function getUserLocation() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('Geolocation not supported'));
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    position => resolve({
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude,
+                        city: 'Your Location'
+                    }),
+                    error => reject(error)
+                );
+            });
+        }
+
+        // ============================================================================
+        // UI RENDERING
+        // ============================================================================
+        function renderBrandFilters(partners) {
+            const brandsGrid = document.getElementById('brandsGrid');
+
+            if (partners.length === 0) {
+                brandsGrid.innerHTML = '<p class="error">No partners available</p>';
+                return;
+            }
+
+            // Add "All" filter
+            const allChip = `<div class="brand-chip active" onclick="toggleFilter('All')">
+                <span>All Gyms</span>
+            </div>`;
+
+            const partnerChips = partners.map(partner => `
+                <div class="brand-chip" onclick="toggleFilter('${partner.name}')">
+                    <span>${partner.name}</span>
+                </div>
+            `).join('');
+
+            brandsGrid.innerHTML = allChip + partnerChips;
+        }
+
+        function renderGymCards(gyms, showDistance = false) {
+            const gymsGrid = document.getElementById('gymsGrid');
+            const gymsCount = document.getElementById('gymsCount');
+
+            if (gyms.length === 0) {
+                gymsGrid.innerHTML = '<p class="error">No gyms found matching your filters.</p>';
+                gymsCount.textContent = '';
+                return;
+            }
+
+            gymsCount.textContent = `Showing ${gyms.length} gym${gyms.length !== 1 ? 's' : ''}`;
+
+            gymsGrid.innerHTML = gyms.map(gym => {
+                const addressParts = gym.address.split(' ');
+                const shortAddress = addressParts.slice(-3).join(' '); // Get last 3 words (city area)
+                const amenitiesList = gym.amenities.split(',').slice(0, 3);
+
+                return `
+                    <div class="gym-card" onclick="showGymModal(${gym.id})">
+                        <div class="gym-card-header">
+                            <span class="gym-partner-badge">${gym.partner_name}</span>
+                            ${showDistance && gym.distance ? `<span class="gym-distance">${gym.distance} km</span>` : ''}
+                        </div>
+                        <h4 class="gym-name">${gym.gym_name}</h4>
+                        <p class="gym-address">📍 ${shortAddress}</p>
+                        <div class="gym-price">
+                            <span class="gym-price-amount">₹${gym.subscription_amount.toLocaleString('en-IN')}</span>
+                            <span class="gym-price-period">/month</span>
+                        </div>
+                        <div class="gym-amenities">
+                            ${amenitiesList.map(a => `<span class="amenity-tag">${a.trim()}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function showGymModal(gymId) {
+            const modal = document.getElementById('gymModal');
+            const modalBody = document.getElementById('modalBody');
+
+            modal.classList.remove('hidden');
+            modalBody.innerHTML = '<div class="loading">Loading gym details...</div>';
+
+            const gym = await fetchGymDetails(gymId);
+            if (!gym) {
+                modalBody.innerHTML = '<p class="error">Failed to load gym details</p>';
+                return;
+            }
+
+            const amenitiesList = gym.amenities_list || gym.amenities.split(',').map(a => a.trim());
+            const plans = gym.subscription_plans;
+
+            modalBody.innerHTML = `
+                <div class="modal-header">
+                    <div>
+                        <h2 style="color: var(--brand-blue); margin-bottom: 8px;">${gym.gym_name}</h2>
+                        <span class="gym-partner-badge">${gym.partner_name}</span>
+                    </div>
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="modal-section">
+                        <h3>Location</h3>
+                        <p style="color: var(--text-secondary);">📍 ${gym.address}</p>
+                    </div>
+
+                    <div class="modal-section">
+                        <h3>Amenities</h3>
+                        <div class="gym-amenities">
+                            ${amenitiesList.map(a => `<span class="amenity-tag">${a}</span>`).join('')}
+                        </div>
+                    </div>
+
+                    <div class="modal-section">
+                        <h3>Choose Your Plan</h3>
+                        <form id="subscriptionForm" onsubmit="handleFormSubmit(event)">
+                            <input type="hidden" name="gym_id" value="${gym.id}">
+                            <input type="hidden" name="gym_name" value="${gym.gym_name}">
+                            <input type="hidden" name="partner_name" value="${gym.partner_name}">
+                            <input type="hidden" name="preferred_plan" id="selectedPlanInput" value="">
+
+                            <div class="plans-grid">
+                                ${Object.entries(plans).map(([key, plan], index) => {
+                                    const discount = plan.discount || 0;
+                                    return `
+                                    <div class="plan-card ${index === 0 ? 'selected' : ''}"
+                                         data-plan="${key}"
+                                         onclick="selectPlan(this, '${key}', '${plan.duration}')">
+                                        <input type="radio" name="plan" value="${key}" ${index === 0 ? 'checked' : ''} style="display: none;">
+                                        <div class="plan-duration">${plan.duration}</div>
+                                        <div class="plan-total">₹${plan.total.toLocaleString('en-IN')}</div>
+                                        <div class="plan-monthly">₹${plan.monthly.toLocaleString('en-IN')}/month</div>
+                                        ${discount > 0 ? `<div class="plan-discount">${discount}% OFF</div>` : ''}
+                                        ${plan.savings > 0 ? `<div class="plan-savings">Save ₹${plan.savings.toLocaleString('en-IN')}</div>` : ''}
+                                    </div>
+                                `}).join('')}
+                            </div>
+
+                            <div style="margin-top: 32px;">
+                                <h3>Your Details</h3>
+
+                                <div class="form-group">
+                                    <label class="form-label required" for="full_name">Full Name</label>
+                                    <input class="form-input" type="text" id="full_name" name="full_name" required minlength="3" maxlength="100" placeholder="Enter your full name">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label required" for="email">Email</label>
+                                    <input class="form-input" type="email" id="email" name="email" required placeholder="your.email@example.com">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label required" for="phone">Phone Number</label>
+                                    <input class="form-input" type="tel" id="phone" name="phone" required pattern="[6-9][0-9]{9}" placeholder="10-digit mobile number">
+                                    <small class="form-hint">Enter 10-digit Indian mobile number</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label required" for="billing_address">Billing Address</label>
+                                    <textarea class="form-textarea" id="billing_address" name="billing_address" required minlength="10" maxlength="300" placeholder="Enter your complete billing address" style="min-height: 80px;"></textarea>
+                                    <small class="form-hint">Street, City, State, PIN Code</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="message">Message (Optional)</label>
+                                    <textarea class="form-textarea" id="message" name="message" maxlength="500" placeholder="Any specific requirements or questions?"></textarea>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="submit" class="btn">Submit Interest</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+
+            // Set first plan as selected by default
+            const firstPlanKey = Object.keys(plans)[0];
+            const firstPlanDuration = plans[firstPlanKey].duration;
+            document.getElementById('selectedPlanInput').value = `${firstPlanKey}`;
+            state.selectedPlan = firstPlanKey;
+        }
+
+        function selectPlan(element, planKey, planDuration) {
+            // Remove selected class from all plans
+            document.querySelectorAll('.plan-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Add selected class to clicked plan
+            element.classList.add('selected');
+
+            // Update hidden input and state
+            document.getElementById('selectedPlanInput').value = planKey;
+            state.selectedPlan = planKey;
+
+            // Check the radio button
+            element.querySelector('input[type="radio"]').checked = true;
+        }
+
+        function closeModal() {
+            document.getElementById('gymModal').classList.add('hidden');
+            state.selectedPlan = null;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('successToast');
+            const toastMessage = document.getElementById('toastMessage');
+
+            toastMessage.textContent = message;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 5000);
+        }
+
+        // ============================================================================
+        // FILTER LOGIC
+        // ============================================================================
+        function toggleFilter(partnerName) {
+            const chips = document.querySelectorAll('.brand-chip');
+
+            if (partnerName === 'All') {
+                // Clear all filters
+                state.activeFilters = [];
+                chips.forEach(chip => chip.classList.remove('active'));
+                chips[0].classList.add('active'); // Activate "All" chip
+                state.filteredGyms = [...state.allGyms];
+            } else {
+                // Toggle specific filter
+                const chip = Array.from(chips).find(c => c.textContent.trim() === partnerName);
+                const isActive = chip.classList.contains('active');
+
+                // Remove "All" if it's active
+                chips[0].classList.remove('active');
+
+                if (isActive) {
+                    // Remove filter
+                    chip.classList.remove('active');
+                    const index = state.activeFilters.indexOf(partnerName);
+                    if (index > -1) state.activeFilters.splice(index, 1);
+                } else {
+                    // Add filter
+                    chip.classList.add('active');
+                    state.activeFilters.push(partnerName);
+                }
+
+                // If no filters, show all
+                if (state.activeFilters.length === 0) {
+                    chips[0].classList.add('active');
+                    state.filteredGyms = [...state.allGyms];
+                } else {
+                    // Apply filters
+                    state.filteredGyms = state.allGyms.filter(gym =>
+                        state.activeFilters.includes(gym.partner_name)
+                    );
+                }
+            }
+
+            renderGymCards(state.filteredGyms, false);
+        }
+
+        // ============================================================================
+        // NEARBY GYMS
+        // ============================================================================
+        async function findNearbyGyms() {
+            const nearbyBtn = document.getElementById('nearbyBtn');
+            nearbyBtn.disabled = true;
+            nearbyBtn.innerHTML = '<span>🔄 Getting location...</span>';
+
+            try {
+                state.userLocation = await getUserLocation();
+                nearbyBtn.innerHTML = '<span>🔄 Finding nearby gyms...</span>';
+
+                const nearbyGyms = await fetchNearbyGyms(state.userLocation.lat, state.userLocation.lon, 20);
+
+                // Apply active filters to nearby gyms
+                let gymsToShow = nearbyGyms;
+                if (state.activeFilters.length > 0) {
+                    gymsToShow = nearbyGyms.filter(gym =>
+                        state.activeFilters.includes(gym.partner_name)
+                    );
+                }
+
+                state.filteredGyms = gymsToShow;
+                renderGymCards(gymsToShow, true);
+
+                // Update location display
+                document.getElementById('locationCity').textContent = state.userLocation.city;
+                document.getElementById('gymsTitle').textContent = 'Gyms Near You';
+
+                nearbyBtn.innerHTML = '<span>✓ Location Updated</span>';
+                nearbyBtn.style.background = 'var(--success-green)';
+                nearbyBtn.style.color = 'var(--bg-white)';
+                nearbyBtn.style.borderColor = 'transparent';
+
+            } catch (error) {
+                console.error('Location error:', error);
+                alert('Unable to access location. Please enable location permissions.');
+                nearbyBtn.disabled = false;
+                nearbyBtn.innerHTML = '<span>Show Nearby Gyms</span>';
+            }
+        }
+
+        // ============================================================================
+        // FORM SUBMISSION
+        // ============================================================================
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const form = event.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalHtml = submitBtn.innerHTML;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>⏳ Submitting...</span>';
+
+            try {
+                const formData = {
+                    gym_id: parseInt(form.gym_id.value),
+                    gym_name: form.gym_name.value,
+                    partner_name: form.partner_name.value,
+                    full_name: form.full_name.value,
+                    email: form.email.value,
+                    phone: form.phone.value,
+                    preferred_plan: state.selectedPlan || form.querySelector('input[name="plan"]:checked').value,
+                    billing_address: form.billing_address.value,
+                    message: form.message.value,
+                    user_latitude: state.userLocation?.lat || DEFAULT_LOCATION.lat,
+                    user_longitude: state.userLocation?.lon || DEFAULT_LOCATION.lon,
+                    user_city: state.userLocation?.city || DEFAULT_LOCATION.city
+                };
+
+                const response = await submitSubscription(formData);
+
+                if (response.success) {
+                    showToast(response.message);
+                    setTimeout(() => {
+                        closeModal();
+                    }, 2000);
+                } else {
+                    alert('Submission failed. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalHtml;
+                }
+
+            } catch (error) {
+                console.error('Form submission error:', error);
+                alert('Error submitting form. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            }
+        }
+
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+        async function init() {
+            console.log('🏋️ Gym Habit - Initializing...');
+
+            // Load all data
+            const [partners, allGyms] = await Promise.all([
+                fetchPartners(),
+                fetchAllGyms()
+            ]);
+
+            state.allGyms = allGyms;
+            state.filteredGyms = allGyms;
+
+            // Render brand filters
+            renderBrandFilters(partners);
+
+            // Load default Delhi gyms
+            const delhiGyms = await fetchNearbyGyms(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon, 20);
+            state.filteredGyms = delhiGyms;
+            renderGymCards(delhiGyms, false);
+
+            document.getElementById('gymsTitle').textContent = `Gyms near ${DEFAULT_LOCATION.city}`;
+
+            // Setup event listeners
+            document.getElementById('nearbyBtn').addEventListener('click', findNearbyGyms);
+
+            // Close modal on Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeModal();
+            });
+
+            console.log('✅ App initialized!');
+        }
+
+        // Run on page load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

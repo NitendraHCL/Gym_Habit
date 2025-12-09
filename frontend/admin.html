@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Gym Habit</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Admin-specific styles */
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .login-screen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .login-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            text-align: center;
+            color: var(--text-primary);
+        }
+
+        .admin-header {
+            background: white;
+            padding: 20px 0;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 30px;
+        }
+
+        .admin-header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 30px;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab.active {
+            color: var(--teal-primary);
+            border-bottom-color: var(--teal-primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--teal-primary);
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .data-table {
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .data-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            background: var(--bg-secondary);
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .data-table tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn-delete {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .action-btn-delete:hover {
+            background: #dc2626;
+            color: white;
+        }
+
+        .file-upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: var(--bg-secondary);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .file-upload-area:hover {
+            border-color: var(--teal-primary);
+            background: rgba(20, 184, 166, 0.05);
+        }
+
+        .file-upload-area input {
+            display: none;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-warning {
+            background: #fef3c7;
+            color: #92400e;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #dc2626;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-tertiary);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <h1 class="login-title">🏋️ Gym Habit Admin</h1>
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="password">Admin Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter admin password">
+                </div>
+                <button type="submit" class="btn btn-gradient btn-full btn-large">Login</button>
+            </form>
+            <p style="margin-top: 20px; text-align: center; font-size: 14px; color: var(--text-tertiary);">
+                Default password: habitadmin2025
+            </p>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard" style="display: none;">
+        <!-- Header -->
+        <div class="admin-header">
+            <div class="admin-container">
+                <div class="admin-header-content">
+                    <div>
+                        <h1 style="font-size: 28px; font-weight: 700;">🏋️ Gym Habit Admin Panel</h1>
+                        <p style="color: var(--text-secondary); font-size: 14px;">Manage gyms and subscription requests</p>
+                    </div>
+                    <button onclick="logout()" class="btn btn-outline">Logout</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-container">
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalGyms">0</div>
+                    <div class="stat-label">Total Gyms</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalPartners">0</div>
+                    <div class="stat-label">Gym Partners</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalRequests">0</div>
+                    <div class="stat-label">Subscription Requests</div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('gyms')">Manage Gyms</button>
+                <button class="tab" onclick="switchTab('subscriptions')">View Subscriptions</button>
+                <button class="tab" onclick="switchTab('upload')">Upload CSV</button>
+            </div>
+
+            <!-- Tab: Manage Gyms -->
+            <div id="tabGyms" class="tab-content active">
+                <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="font-size: 24px; font-weight: 600;">All Gyms</h2>
+                    <button onclick="showAddGymForm()" class="btn btn-primary">+ Add New Gym</button>
+                </div>
+
+                <div id="addGymForm" style="display: none; background: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+                    <h3 style="margin-bottom: 20px;">Add New Gym</h3>
+                    <form onsubmit="handleAddGym(event)">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div class="form-group">
+                                <label>Partner Name *</label>
+                                <input type="text" name="partner_name" required placeholder="e.g., Cult">
+                            </div>
+                            <div class="form-group">
+                                <label>Gym Name *</label>
+                                <input type="text" name="gym_name" required placeholder="e.g., Cult Fit Andheri West">
+                            </div>
+                            <div class="form-group">
+                                <label>Address *</label>
+                                <input type="text" name="address" required placeholder="Full address">
+                            </div>
+                            <div class="form-group">
+                                <label>Pincode *</label>
+                                <input type="text" name="pincode" required pattern="[0-9]{6}" placeholder="6-digit pincode">
+                            </div>
+                            <div class="form-group">
+                                <label>Latitude *</label>
+                                <input type="number" name="latitude" step="0.000001" required placeholder="e.g., 19.1350">
+                            </div>
+                            <div class="form-group">
+                                <label>Longitude *</label>
+                                <input type="number" name="longitude" step="0.000001" required placeholder="e.g., 72.8352">
+                            </div>
+                            <div class="form-group">
+                                <label>Subscription Amount (₹/month) *</label>
+                                <input type="number" name="subscription_amount" required placeholder="e.g., 2499">
+                            </div>
+                            <div class="form-group">
+                                <label>Amenities (comma-separated) *</label>
+                                <input type="text" name="amenities" required placeholder="Cardio,Yoga,Pool">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 12px; margin-top: 20px;">
+                            <button type="submit" class="btn btn-primary">Add Gym</button>
+                            <button type="button" onclick="hideAddGymForm()" class="btn btn-outline">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Partner</th>
+                                <th>Gym Name</th>
+                                <th>Location</th>
+                                <th>Price</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gymsTable">
+                            <tr><td colspan="6" style="text-align: center;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: View Subscriptions -->
+            <div id="tabSubscriptions" class="tab-content">
+                <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 20px;">Subscription Requests</h2>
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Request ID</th>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                                <th>Gym</th>
+                                <th>Plan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subscriptionsTable">
+                            <tr><td colspan="7" style="text-align: center;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Upload CSV -->
+            <div id="tabUpload" class="tab-content">
+                <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 20px;">Upload Gym CSV</h2>
+
+                <div class="alert alert-warning">
+                    <strong>⚠️ Warning:</strong> Uploading a new CSV will replace ALL existing gyms. A backup will be created automatically.
+                </div>
+
+                <div class="file-upload-area" onclick="document.getElementById('csvFile').click()">
+                    <input type="file" id="csvFile" accept=".csv" onchange="handleCSVUpload(event)">
+                    <div style="font-size: 48px; margin-bottom: 16px;">📁</div>
+                    <h3 style="margin-bottom: 8px;">Click to select CSV file</h3>
+                    <p style="color: var(--text-tertiary); font-size: 14px;">File must have columns: PartnerName, GymName, Address, Pincode, Latitude, Longitude, SubscriptionAmount, Amenities</p>
+                </div>
+
+                <div id="uploadStatus" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminPassword = '';
+
+        // ============================================================================
+        // AUTHENTICATION
+        // ============================================================================
+        async function handleLogin(event) {
+            event.preventDefault();
+            const password = event.target.password.value;
+
+            try {
+                const formData = new FormData();
+                formData.append('password', password);
+
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    adminPassword = password;
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('adminDashboard').style.display = 'block';
+                    loadDashboard();
+                } else {
+                    alert('Invalid password!');
+                }
+            } catch (error) {
+                alert('Login failed. Please try again.');
+            }
+        }
+
+        function logout() {
+            adminPassword = '';
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('adminDashboard').style.display = 'none';
+        }
+
+        // ============================================================================
+        // TAB SWITCHING
+        // ============================================================================
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
+
+            // Load data for specific tab
+            if (tabName === 'subscriptions') {
+                loadSubscriptions();
+            }
+        }
+
+        // ============================================================================
+        // DASHBOARD DATA
+        // ============================================================================
+        async function loadDashboard() {
+            await Promise.all([
+                loadGyms(),
+                loadStats()
+            ]);
+        }
+
+        async function loadStats() {
+            try {
+                const gymsResponse = await fetch(`/api/admin/gyms?password=${adminPassword}`);
+                const gymsData = await gymsResponse.json();
+
+                const subsResponse = await fetch(`/api/admin/subscriptions?password=${adminPassword}`);
+                const subsData = await subsResponse.json();
+
+                // Count unique partners
+                const partners = new Set(gymsData.gyms.map(g => g.partner_name));
+
+                document.getElementById('totalGyms').textContent = gymsData.total;
+                document.getElementById('totalPartners').textContent = partners.size;
+                document.getElementById('totalRequests').textContent = subsData.total;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadGyms() {
+            try {
+                const response = await fetch(`/api/admin/gyms?password=${adminPassword}`);
+                const data = await response.json();
+
+                const tbody = document.getElementById('gymsTable');
+                if (data.gyms.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">🏋️</div><p>No gyms found. Add your first gym!</p></div></td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.gyms.map(gym => `
+                    <tr>
+                        <td>${gym.id}</td>
+                        <td><span class="brand-badge">${gym.partner_name}</span></td>
+                        <td>${gym.gym_name}</td>
+                        <td>${gym.pincode}</td>
+                        <td>₹${gym.subscription_amount.toLocaleString('en-IN')}</td>
+                        <td>
+                            <button class="action-btn action-btn-delete" onclick="deleteGym(${gym.id}, '${gym.gym_name}')">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading gyms:', error);
+            }
+        }
+
+        async function loadSubscriptions() {
+            try {
+                const response = await fetch(`/api/admin/subscriptions?password=${adminPassword}`);
+                const data = await response.json();
+
+                const tbody = document.getElementById('subscriptionsTable');
+                if (data.requests.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">📋</div><p>No subscription requests yet.</p></div></td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.requests.map(req => {
+                    const date = new Date(req.timestamp).toLocaleDateString('en-IN');
+                    return `
+                        <tr>
+                            <td>${req.request_id}</td>
+                            <td>${date}</td>
+                            <td>${req.full_name}</td>
+                            <td><a href="tel:${req.phone}">${req.phone}</a></td>
+                            <td><a href="mailto:${req.email}">${req.email}</a></td>
+                            <td>${req.gym_name}</td>
+                            <td>${req.preferred_plan}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error loading subscriptions:', error);
+            }
+        }
+
+        // ============================================================================
+        // GYM MANAGEMENT
+        // ============================================================================
+        function showAddGymForm() {
+            document.getElementById('addGymForm').style.display = 'block';
+        }
+
+        function hideAddGymForm() {
+            document.getElementById('addGymForm').style.display = 'none';
+        }
+
+        async function handleAddGym(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+
+            const gymData = {
+                partner_name: formData.get('partner_name'),
+                gym_name: formData.get('gym_name'),
+                address: formData.get('address'),
+                pincode: formData.get('pincode'),
+                latitude: parseFloat(formData.get('latitude')),
+                longitude: parseFloat(formData.get('longitude')),
+                subscription_amount: parseInt(formData.get('subscription_amount')),
+                amenities: formData.get('amenities')
+            };
+
+            try {
+                const response = await fetch(`/api/admin/gyms/add?password=${adminPassword}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(gymData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Gym added successfully!');
+                    form.reset();
+                    hideAddGymForm();
+                    loadDashboard();
+                } else {
+                    alert('Failed to add gym. Please check all fields.');
+                }
+            } catch (error) {
+                console.error('Error adding gym:', error);
+                alert('Error adding gym. Please try again.');
+            }
+        }
+
+        async function deleteGym(gymId, gymName) {
+            if (!confirm(`Are you sure you want to delete "${gymName}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/gyms/${gymId}?password=${adminPassword}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Gym deleted successfully!');
+                    loadDashboard();
+                } else {
+                    alert('Failed to delete gym.');
+                }
+            } catch (error) {
+                console.error('Error deleting gym:', error);
+                alert('Error deleting gym. Please try again.');
+            }
+        }
+
+        // ============================================================================
+        // CSV UPLOAD
+        // ============================================================================
+        async function handleCSVUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const statusDiv = document.getElementById('uploadStatus');
+            statusDiv.innerHTML = '<div class="alert alert-warning">⏳ Uploading and processing CSV...</div>';
+
+            const formData = new FormData();
+            formData.append('password', adminPassword);
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/admin/gyms/upload-csv', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    statusDiv.innerHTML = `<div class="alert alert-success">✅ ${data.message}</div>`;
+                    loadDashboard();
+                } else {
+                    statusDiv.innerHTML = `<div class="alert alert-error">❌ Upload failed: ${data.detail || 'Unknown error'}</div>`;
+                }
+            } catch (error) {
+                console.error('Error uploading CSV:', error);
+                statusDiv.innerHTML = `<div class="alert alert-error">❌ Error uploading CSV. Please try again.</div>`;
+            }
+
+            // Reset file input
+            event.target.value = '';
+        }
+    </script>
+</body>
+</html>
