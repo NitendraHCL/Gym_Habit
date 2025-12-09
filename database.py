@@ -223,7 +223,12 @@ class SubscriptionManager:
     """Manages subscription requests"""
 
     def __init__(self, json_path: str = "subscription_requests.json"):
-        self.json_path = json_path
+        # Use /tmp for writable storage in serverless (Vercel)
+        import os
+        if os.environ.get('VERCEL'):
+            self.json_path = f"/tmp/{Path(json_path).name}"
+        else:
+            self.json_path = json_path
         self._ensure_file_exists()
 
     def _ensure_file_exists(self):
