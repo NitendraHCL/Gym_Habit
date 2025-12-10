@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Find Partner Gyms - Habit Health</title>
     <meta name="description" content="Discover partner gyms near you with Habit Health by HCL Healthcare">
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=3">
 </head>
 <body>
     <!-- Header -->
@@ -239,23 +239,41 @@
 
             gymsGrid.innerHTML = gyms.map(gym => {
                 const addressParts = gym.address.split(' ');
-                const shortAddress = addressParts.slice(-3).join(' '); // Get last 3 words (city area)
+                const location = addressParts.slice(-2).join(' '); // Get city area
                 const amenitiesList = gym.amenities.split(',').slice(0, 3);
 
                 return `
                     <div class="gym-card" onclick="showGymModal(${gym.id})">
-                        <div class="gym-card-header">
-                            <span class="gym-partner-badge">${gym.partner_name}</span>
-                            ${showDistance && gym.distance ? `<span class="gym-distance">${gym.distance} km</span>` : ''}
+                        <!-- Image Placeholder -->
+                        <div class="gym-card-image">
+                            <span class="gym-card-badge">${gym.partner_name}</span>
+                            ${showDistance && gym.distance ?
+                                `<span class="gym-distance-badge">📍 ${gym.distance} km</span>` : ''}
                         </div>
-                        <h4 class="gym-name">${gym.gym_name}</h4>
-                        <p class="gym-address">📍 ${shortAddress}</p>
-                        <div class="gym-price">
-                            <span class="gym-price-amount">₹${gym.subscription_amount.toLocaleString('en-IN')}</span>
-                            <span class="gym-price-period">/month</span>
+
+                        <!-- Card Body -->
+                        <div class="gym-card-body">
+                            <h4 class="gym-name">${gym.gym_name}</h4>
+                            <div class="gym-location">📍 ${location}</div>
+
+                            <!-- Prominent Pricing -->
+                            <div class="gym-pricing">
+                                <div class="gym-pricing-label">STARTING FROM</div>
+                                <div class="gym-pricing-amount">
+                                    <span class="gym-price">₹${gym.subscription_amount.toLocaleString('en-IN')}</span>
+                                    <span class="gym-price-period">/month</span>
+                                </div>
+                            </div>
+
+                            <!-- Amenities -->
+                            <div class="gym-amenities">
+                                ${amenitiesList.map(a => `<span class="amenity-tag">${a.trim()}</span>`).join('')}
+                            </div>
                         </div>
-                        <div class="gym-amenities">
-                            ${amenitiesList.map(a => `<span class="amenity-tag">${a.trim()}</span>`).join('')}
+
+                        <!-- Card Footer -->
+                        <div class="gym-card-footer">
+                            <button class="gym-card-cta">View Details & Plans →</button>
                         </div>
                     </div>
                 `;
@@ -326,36 +344,57 @@
                             </div>
 
                             <div style="margin-top: 32px;">
-                                <h3>Your Details</h3>
+                                <!-- Personal Details Section -->
+                                <div class="form-section">
+                                    <h3 class="form-section-title">Personal Details</h3>
 
-                                <div class="form-group">
-                                    <label class="form-label required" for="full_name">Full Name</label>
-                                    <input class="form-input" type="text" id="full_name" name="full_name" required minlength="3" maxlength="100" placeholder="Enter your full name">
+                                    <div class="form-group">
+                                        <label class="form-label required" for="full_name">Full Name</label>
+                                        <input class="form-input" type="text" id="full_name" name="full_name" required minlength="3" maxlength="100" placeholder="Enter your full name">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label required" for="phone">Phone Number</label>
+                                        <input class="form-input" type="tel" id="phone" name="phone" required pattern="[6-9][0-9]{9}" placeholder="10-digit mobile number">
+                                        <small class="form-hint">Enter 10-digit Indian mobile number</small>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label required" for="email">Email</label>
+                                        <input class="form-input" type="email" id="email" name="email" required placeholder="your.email@example.com">
+                                    </div>
                                 </div>
 
-                                <div class="form-group">
-                                    <label class="form-label required" for="email">Email</label>
-                                    <input class="form-input" type="email" id="email" name="email" required placeholder="your.email@example.com">
+                                <!-- Billing Address Section -->
+                                <div class="form-section" style="margin-top: 24px;">
+                                    <h3 class="form-section-title">Billing Address</h3>
+
+                                    <div class="form-group">
+                                        <label class="form-label required" for="pincode">PIN Code</label>
+                                        <input class="form-input" type="text" id="pincode" name="pincode" required pattern="[1-9][0-9]{5}" maxlength="6" placeholder="6-digit PIN code" oninput="handlePinCodeInput(this)">
+                                        <small class="form-hint">Enter 6-digit Indian PIN code</small>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label required" for="state">State</label>
+                                        <input class="form-input" type="text" id="state" name="state" required readonly placeholder="State will auto-fill">
+                                        <small class="form-hint">Auto-filled based on PIN code</small>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label required" for="billing_address">Address</label>
+                                        <textarea class="form-textarea" id="billing_address" name="billing_address" required minlength="10" maxlength="300" placeholder="House/Flat No., Building Name, Street, Locality" style="min-height: 80px;"></textarea>
+                                        <small class="form-hint">Enter complete street address</small>
+                                    </div>
                                 </div>
 
-                                <div class="form-group">
-                                    <label class="form-label required" for="phone">Phone Number</label>
-                                    <input class="form-input" type="tel" id="phone" name="phone" required pattern="[6-9][0-9]{9}" placeholder="10-digit mobile number">
-                                    <small class="form-hint">Enter 10-digit Indian mobile number</small>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label required" for="billing_address">Billing Address</label>
-                                    <textarea class="form-textarea" id="billing_address" name="billing_address" required minlength="10" maxlength="300" placeholder="Enter your complete billing address" style="min-height: 80px;"></textarea>
-                                    <small class="form-hint">Street, City, State, PIN Code</small>
-                                </div>
-
-                                <div class="form-group">
+                                <!-- Optional Message -->
+                                <div class="form-group" style="margin-top: 24px;">
                                     <label class="form-label" for="message">Message (Optional)</label>
                                     <textarea class="form-textarea" id="message" name="message" maxlength="500" placeholder="Any specific requirements or questions?"></textarea>
                                 </div>
 
-                                <div class="form-actions">
+                                <div class="form-actions" style="margin-top: 32px;">
                                     <button type="submit" class="btn">Submit Interest</button>
                                 </div>
                             </div>
@@ -494,6 +533,58 @@
         }
 
         // ============================================================================
+        // PIN CODE AUTO-FILL
+        // ============================================================================
+        let pinCodeTimeout = null;
+
+        async function handlePinCodeInput(input) {
+            const pincode = input.value.replace(/\D/g, ''); // Remove non-digits
+            input.value = pincode;
+
+            const stateField = document.getElementById('state');
+
+            // Clear previous timeout
+            if (pinCodeTimeout) {
+                clearTimeout(pinCodeTimeout);
+            }
+
+            // Reset state if PIN is incomplete
+            if (pincode.length !== 6) {
+                stateField.value = '';
+                stateField.style.background = '';
+                return;
+            }
+
+            // Show loading state
+            stateField.value = 'Loading...';
+            stateField.style.background = 'var(--bg-gray-subtle)';
+
+            // Debounce API call
+            pinCodeTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+                    const data = await response.json();
+
+                    if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice) {
+                        const state = data[0].PostOffice[0].State;
+                        stateField.value = state;
+                        stateField.style.background = 'var(--bg-blue-subtle)';
+                        stateField.style.color = 'var(--brand-blue)';
+                    } else {
+                        stateField.value = '';
+                        stateField.style.background = '';
+                        alert('Invalid PIN code. Please check and try again.');
+                    }
+                } catch (error) {
+                    console.error('Error fetching PIN code data:', error);
+                    stateField.value = '';
+                    stateField.style.background = '';
+                    alert('Unable to fetch state for this PIN code. Please enter manually.');
+                }
+            }, 500); // Wait 500ms after user stops typing
+        }
+
+        // ============================================================================
         // FORM SUBMISSION
         // ============================================================================
         async function handleFormSubmit(event) {
@@ -507,6 +598,12 @@
             submitBtn.innerHTML = '<span>⏳ Submitting...</span>';
 
             try {
+                // Combine address fields into complete billing address
+                const addressLine = form.billing_address.value;
+                const stateValue = form.state.value;
+                const pincode = form.pincode.value;
+                const completeBillingAddress = `${addressLine}, ${stateValue} - ${pincode}`;
+
                 const formData = {
                     gym_id: parseInt(form.gym_id.value),
                     gym_name: form.gym_name.value,
@@ -515,7 +612,7 @@
                     email: form.email.value,
                     phone: form.phone.value,
                     preferred_plan: state.selectedPlan || form.querySelector('input[name="plan"]:checked').value,
-                    billing_address: form.billing_address.value,
+                    billing_address: completeBillingAddress,
                     message: form.message.value,
                     user_latitude: state.userLocation?.lat || DEFAULT_LOCATION.lat,
                     user_longitude: state.userLocation?.lon || DEFAULT_LOCATION.lon,
