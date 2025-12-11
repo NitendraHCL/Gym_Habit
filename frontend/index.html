@@ -226,16 +226,16 @@
             }
 
             // Add "All" filter tab with icon
-            const allTab = `<div class="brand-chip active" onclick="toggleFilter('All')">
+            const allTab = `<div class="brand-chip active" data-partner="All" onclick="toggleFilter('All')">
                 <span class="brand-icon">🏠</span>
                 <span>All Gyms</span>
             </div>`;
 
-            // Partner tabs with unique icons
+            // Partner tabs with unique icons and data-partner attribute
             const partnerTabs = partners.map(partner => {
                 const config = getPartnerConfig(partner.name);
                 return `
-                <div class="brand-chip" onclick="toggleFilter('${partner.name}')">
+                <div class="brand-chip" data-partner="${partner.name}" onclick="toggleFilter('${partner.name}')">
                     <span class="brand-icon">${config.icon}</span>
                     <span>${partner.name}</span>
                 </div>
@@ -478,8 +478,10 @@
                 chips[0].classList.add('active'); // Activate "All" chip
                 state.filteredGyms = [...state.allGyms];
             } else {
-                // Toggle specific filter
-                const chip = Array.from(chips).find(c => c.textContent.trim() === partnerName);
+                // Find chip by data attribute
+                const chip = document.querySelector(`.brand-chip[data-partner="${partnerName}"]`);
+                if (!chip) return;
+
                 const isActive = chip.classList.contains('active');
 
                 // Remove "All" if it's active
