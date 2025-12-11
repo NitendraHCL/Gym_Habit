@@ -108,6 +108,20 @@
             lon: 77.2090
         };
 
+        // Partner Icons & Colors Configuration
+        const PARTNER_CONFIG = {
+            'Cult': { icon: '🔥', key: 'cult', color: '#e53935' },
+            'Gold\'s Gym': { icon: '🏆', key: 'golds', color: '#ffc107' },
+            'Anytime Fitness': { icon: '⏰', key: 'anytime', color: '#7b1fa2' },
+            'Talwalkar\'s': { icon: '💪', key: 'talwalkars', color: '#1565c0' },
+            'Fitness First': { icon: '🥇', key: 'fitness-first', color: '#00695c' }
+        };
+
+        // Get partner config with fallback
+        function getPartnerConfig(partnerName) {
+            return PARTNER_CONFIG[partnerName] || { icon: '🏋️', key: 'default', color: '#1e4b8e' };
+        }
+
         // ============================================================================
         // STATE MANAGEMENT
         // ============================================================================
@@ -211,18 +225,23 @@
                 return;
             }
 
-            // Add "All" filter
-            const allChip = `<div class="brand-chip active" onclick="toggleFilter('All')">
+            // Add "All" filter tab with icon
+            const allTab = `<div class="brand-chip active" onclick="toggleFilter('All')">
+                <span class="brand-icon">🏠</span>
                 <span>All Gyms</span>
             </div>`;
 
-            const partnerChips = partners.map(partner => `
+            // Partner tabs with unique icons
+            const partnerTabs = partners.map(partner => {
+                const config = getPartnerConfig(partner.name);
+                return `
                 <div class="brand-chip" onclick="toggleFilter('${partner.name}')">
+                    <span class="brand-icon">${config.icon}</span>
                     <span>${partner.name}</span>
                 </div>
-            `).join('');
+            `}).join('');
 
-            brandsGrid.innerHTML = allChip + partnerChips;
+            brandsGrid.innerHTML = allTab + partnerTabs;
         }
 
         function renderGymCards(gyms, showDistance = false) {
@@ -239,13 +258,15 @@
 
             gymsGrid.innerHTML = gyms.map(gym => {
                 const addressParts = gym.address.split(' ');
-                const location = addressParts.slice(-2).join(' '); // Get city area
+                const location = addressParts.slice(-2).join(' ');
                 const amenitiesList = gym.amenities.split(',').slice(0, 3);
+                const partnerConfig = getPartnerConfig(gym.partner_name);
 
                 return `
                     <div class="gym-card" onclick="showGymModal(${gym.id})">
-                        <!-- Image Placeholder -->
-                        <div class="gym-card-image">
+                        <!-- Card Header with Partner Icon -->
+                        <div class="gym-card-image" data-partner="${partnerConfig.key}">
+                            <span class="partner-icon">${partnerConfig.icon}</span>
                             <span class="gym-card-badge">${gym.partner_name}</span>
                             ${showDistance && gym.distance ?
                                 `<span class="gym-distance-badge">📍 ${gym.distance} km</span>` : ''}
@@ -256,7 +277,7 @@
                             <h4 class="gym-name">${gym.gym_name}</h4>
                             <div class="gym-location">📍 ${location}</div>
 
-                            <!-- Prominent Pricing -->
+                            <!-- Pricing -->
                             <div class="gym-pricing">
                                 <div class="gym-pricing-label">STARTING FROM</div>
                                 <div class="gym-pricing-amount">
@@ -273,7 +294,7 @@
 
                         <!-- Card Footer -->
                         <div class="gym-card-footer">
-                            <button class="gym-card-cta">View Details & Plans →</button>
+                            <button class="gym-card-cta">View Details →</button>
                         </div>
                     </div>
                 `;
